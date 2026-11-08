@@ -61,7 +61,7 @@
     @media(max-width:600px){#saveTools{right:6px;bottom:6px}#saveTools button{padding:8px 10px}#saveToolsPanel{padding:7px}}
   </style>
   <div id="saveTools">
-    <button type="button" id="saveToolsToggle" aria-expanded="true" aria-controls="saveToolsPanel">Masquer les sauvegardes</button>
+    <button type="button" id="saveToolsToggle" aria-expanded="true" aria-controls="saveToolsPanel" onclick="var p=document.getElementById('saveToolsPanel');var h=!p.hidden;p.hidden=h;this.textContent=h?'💾 Sauvegardes':'Masquer les sauvegardes';this.setAttribute('aria-expanded',String(!h));">Masquer les sauvegardes</button>
     <div id="saveToolsPanel">
       <button type="button" id="exportSaveButton">Exporter ma sauvegarde</button>
       <button type="button" id="importSaveButton">Importer une sauvegarde</button>

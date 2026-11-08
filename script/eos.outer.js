@@ -92,6 +92,91 @@ jQuery(function () {
       return !0
     }
   }
+
+  // External save export/import bridge. Uses the same storage methods as the game.
+  window.EOSSaveManager = {
+    exportData: function () {
+      return Promise.resolve(rpcMethods.loadStorage()).then(function (state) {
+        return {
+          format: 'tease-player-save',
+          version: 1,
+          teaseId: Number(document.body.getAttribute('data-tease-id')),
+          title: document.body.getAttribute('data-title') || document.title,
+          exportedAt: new Date().toISOString(),
+          state: typeof state === 'string' ? state : JSON.stringify(state)
+        };
+      });
+    },
+    importData: function (backup) {
+      if (!script || !script.modules || !script.modules.storage) {
+        return Promise.reject(new Error('Le jeu ne prend pas en charge la sauvegarde.'));
+      }
+      if (!backup || backup.format !== 'tease-player-save' || backup.version !== 1 ||
+          typeof backup.state !== 'string' || typeof backup.teaseId !== 'number') {
+        return Promise.reject(new Error('Fichier de sauvegarde invalide.'));
+      }
+      var id = Number(document.body.getAttribute('data-tease-id'));
+      if (backup.teaseId !== id) return Promise.reject(new Error('Cette sauvegarde appartient à un autre jeu.'));
+      try {
+        var parsed = JSON.parse(backup.state);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid');
+      } catch (e) {
+        return Promise.reject(new Error('Les données de sauvegarde sont endommagées.'));
+      }
+      return Promise.resolve(rpcMethods.loadStorage()).then(function (current) {
+        var copy = {
+          format: 'tease-player-save', version: 1, teaseId: id,
+          title: document.title, exportedAt: new Date().toISOString(),
+          state: typeof current === 'string' ? current : JSON.stringify(current)
+        };
+        try { localStorage.setItem('tease-player-pre-import-backup-' + id, JSON.stringify(copy)); } catch (e) {}
+        return rpcMethods.saveStorage({ state: backup.state });
+      });
+    }
+  };
+
+  function bindExternalSaveButtons() {
+    var exportButton = document.getElementById('exportSaveButton');
+    var importButton = document.getElementById('importSaveButton');
+    var input = document.getElementById('saveImportInput');
+    var status = document.getElementById('saveStatus');
+    if (!exportButton || !importButton || !input || !status) return;
+    function report(message) { status.textContent = message; }
+    exportButton.addEventListener('click', function () {
+      report('Préparation de la sauvegarde…');
+      window.EOSSaveManager.exportData().then(function (data) {
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'sauvegarde-' + data.teaseId + '.json';
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        report('Export terminé. Vérifie le fichier dans Fichiers.');
+      }).catch(function (error) { report(error.message || 'Erreur pendant l’export.'); });
+    });
+    importButton.addEventListener('click', function () { input.click(); });
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var backup = JSON.parse(reader.result);
+          if (!window.confirm('Importer cette sauvegarde remplacera la progression actuelle. Continuer ?')) { input.value = ''; return; }
+          report('Vérification et importation…');
+          window.EOSSaveManager.importData(backup).then(function () {
+            report('Import réussi. Recharge le jeu pour retrouver la progression.');
+          }).catch(function (error) { report(error.message || 'Import impossible.'); });
+        } catch (error) { report('Fichier JSON illisible.'); }
+        input.value = '';
+      };
+      reader.onerror = function () { report('Impossible de lire ce fichier.'); input.value = ''; };
+      reader.readAsText(file);
+    });
+  }
+  bindExternalSaveButtons();
+
   window.addEventListener('message', function (event) {
     if (event.source !== iframe.contentWindow) {
       console.error('Received message from unknown source, ignoring')

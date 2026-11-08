@@ -1,6 +1,14 @@
 /* Milovana.com Resource File - Copyright 2006-2022 Milovana.com !modified*/
 jQuery(function () {
   var iframe = document.getElementsByClassName('eosIframe')[0]
+  function setSaveToolsCollapsed(collapsed) {
+    var panel = document.getElementById('saveToolsPanel');
+    var toggle = document.getElementById('saveToolsToggle');
+    if (!panel || !toggle) return;
+    panel.hidden = collapsed;
+    toggle.textContent = collapsed ? '💾 Sauvegardes' : 'Masquer les sauvegardes';
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+  }
   var script
   var rpcMethods = {
     load: function (params) {
@@ -28,6 +36,7 @@ jQuery(function () {
         }
         document.title = title
         script = json
+        setSaveToolsCollapsed(true)
         return { title: title, author: author, script: script, preview: preview }
       })
     }, queryMedia: function (params) {
@@ -140,7 +149,11 @@ jQuery(function () {
     var importButton = document.getElementById('importSaveButton');
     var input = document.getElementById('saveImportInput');
     var status = document.getElementById('saveStatus');
-    if (!exportButton || !importButton || !input || !status) return;
+    var toggle = document.getElementById('saveToolsToggle');
+    if (!exportButton || !importButton || !input || !status || !toggle) return;
+    toggle.addEventListener('click', function () {
+      setSaveToolsCollapsed(!document.getElementById('saveToolsPanel').hidden);
+    });
     function report(message) { status.textContent = message; }
     exportButton.addEventListener('click', function () {
       report('Préparation de la sauvegarde…');

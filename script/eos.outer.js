@@ -151,9 +151,6 @@ jQuery(function () {
     var status = document.getElementById('saveStatus');
     var toggle = document.getElementById('saveToolsToggle');
     if (!exportButton || !importButton || !input || !status || !toggle) return;
-    toggle.addEventListener('click', function () {
-      setSaveToolsCollapsed(!document.getElementById('saveToolsPanel').hidden);
-    });
     function report(message) { status.textContent = message; }
     exportButton.addEventListener('click', function () {
       report('Préparation de la sauvegarde…');
